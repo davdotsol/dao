@@ -7,7 +7,7 @@ import "hardhat/console.sol";
 import "./Token.sol";
 
 contract DAO {
-    address owner;
+    address public owner;
     Token public token;
     uint256 public quorum;
 
@@ -22,17 +22,22 @@ contract DAO {
 
     uint256 public proposalCount;
     mapping(uint256 => Proposal) public proposals;
-    mapping(address => mapping(uint256 => bool)) public votes;
+    mapping(address => mapping(uint256 => bool)) public voted;
 
     event Propose(
-        uint256 id,
+        uint256 indexed id,
+        string name,
         uint256 amount,
-        address recipient,
-        address creator
+        address indexed recipient,
+        address indexed creator
     );
+    event Vote(uint256 indexed id, address indexed voter, uint256 votes);
+    event Finalize(uint256 indexed id, uint256 votes);
 
-    event Vote(uint256 id, address investor);
-    event Finalize(uint256 id);
+    modifier onlyInvestor() {
+        require(token.balanceOf(msg.sender) > 0, "DAO: must be token holder");
+        _;
+    }
 
     constructor(Token _token, uint256 _quorum) {
         owner = msg.sender;
@@ -40,27 +45,17 @@ contract DAO {
         quorum = _quorum;
     }
 
-    // Allow contract to receive ether
-    receive() external payable {}
-
-    modifier onlyInvestor() {
-        require(token.balanceOf(msg.sender) > 0, "must be token holder");
-        _;
-    }
-
     function createProposal(
         string memory _name,
         uint256 _amount,
         address payable _recipient
     ) external onlyInvestor {
-        require(address(this).balance >= _amount);
+        require(
+            address(this).balance >= _amount,
+            "DAO: insufficient balance for proposal"
+        );
 
-        proposalCount++;
-        // Create a Proposal
-        // Ex1. Send 100 ETH to Tom
-        // Ex2. Send 50 ETH to Jane for Website development
-        // Ex3. Send 1 ETH to Julie for Marketing
-        proposals[proposalCount] = Proposal(
+        proposals[++proposalCount] = Proposal(
             proposalCount,
             _name,
             _amount,
@@ -68,33 +63,35 @@ contract DAO {
             0,
             false
         );
-
-        emit Propose(proposalCount, _amount, _recipient, msg.sender);
+        emit Propose(proposalCount, _name, _amount, _recipient, msg.sender);
     }
 
     function vote(uint256 _proposalId) external onlyInvestor {
-        // Don't let investors vote twice
-        require(!votes[msg.sender][_proposalId], "Already voted");
+        require(!voted[msg.sender][_proposalId], "DAO: already voted");
         Proposal storage proposal = proposals[_proposalId];
+        uint256 voterBalance = token.balanceOf(msg.sender);
 
-        proposal.votes += token.balanceOf(msg.sender);
+        proposal.votes += voterBalance;
+        voted[msg.sender][_proposalId] = true;
 
-        votes[msg.sender][_proposalId] = true;
-
-        emit Vote(_proposalId, msg.sender);
+        emit Vote(_proposalId, msg.sender, voterBalance);
     }
 
     function finalizeProposal(uint256 _proposalId) external onlyInvestor {
         Proposal storage proposal = proposals[_proposalId];
-        require(!proposal.finalized, "proposal already finalized");
+        require(!proposal.finalized, "DAO: proposal already finalized");
+        require(proposal.votes >= quorum, "DAO: must reach quorum to finalize");
         require(
-            proposal.votes >= quorum,
-            "must reach quorum to finalize proposal"
+            address(this).balance >= proposal.amount,
+            "DAO: insufficient balance to finalize"
         );
-        require(address(this).balance >= proposal.amount);
+
         proposal.finalized = true;
         (bool sent, ) = proposal.recipient.call{value: proposal.amount}("");
-        require(sent);
-        emit Finalize(_proposalId);
+        require(sent, "DAO: failed to send Ether");
+
+        emit Finalize(_proposalId, proposal.votes);
     }
+
+    receive() external payable {}
 }
