@@ -25,18 +25,21 @@ async function main() {
   );
   console.log(`token fetched ${token.target}`);
 
-  let tx = await token.transfer(investor1.address, tokens(200000));
+  let tx = await token.transfer(investor1.address, tokens(10));
   await tx.wait();
-  tx = await token.transfer(investor2.address, tokens(200000));
+  tx = await token.transfer(investor2.address, tokens(10));
   await tx.wait();
-  tx = await token.transfer(investor3.address, tokens(200000));
+  tx = await token.transfer(investor3.address, tokens(10));
   await tx.wait();
 
-  const dao = hre.ethers.getContractAt('DAO', config[chainId].dao.address);
+  const dao = await hre.ethers.getContractAt(
+    'DAO',
+    config[chainId].dao.address
+  );
 
   tx = await funder.sendTransaction({
     to: (await dao).target,
-    value: hre.ethers.parseEther('200000'),
+    value: hre.ethers.parseEther('10'),
   });
   tx.wait();
 
