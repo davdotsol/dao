@@ -23,6 +23,7 @@ contract DAO {
     uint256 public proposalCount;
     mapping(uint256 => Proposal) public proposals;
     mapping(address => mapping(uint256 => bool)) public voted;
+    mapping(uint256 => uint256) public proposalCreationTime;
 
     event Propose(
         uint256 indexed id,
@@ -39,6 +40,14 @@ contract DAO {
         _;
     }
 
+    modifier notFinalized(uint256 _proposalId) {
+        require(
+            !proposals[_proposalId].finalized,
+            "DAO: proposal already finalized"
+        );
+        _;
+    }
+
     constructor(Token _token, uint256 _quorum) {
         owner = msg.sender;
         token = _token;
@@ -50,11 +59,6 @@ contract DAO {
         uint256 _amount,
         address payable _recipient
     ) external onlyInvestor {
-        require(
-            address(this).balance >= _amount,
-            "DAO: insufficient balance for proposal"
-        );
-
         proposals[++proposalCount] = Proposal(
             proposalCount,
             _name,
@@ -63,13 +67,21 @@ contract DAO {
             0,
             false
         );
+        proposalCreationTime[proposalCount] = block.timestamp;
         emit Propose(proposalCount, _name, _amount, _recipient, msg.sender);
     }
 
-    function vote(uint256 _proposalId) external onlyInvestor {
+    function vote(
+        uint256 _proposalId
+    ) external onlyInvestor notFinalized(_proposalId) {
         require(!voted[msg.sender][_proposalId], "DAO: already voted");
+
         Proposal storage proposal = proposals[_proposalId];
         uint256 voterBalance = token.balanceOf(msg.sender);
+        require(
+            block.timestamp >= proposalCreationTime[_proposalId],
+            "DAO: voting before proposal creation"
+        );
 
         proposal.votes += voterBalance;
         voted[msg.sender][_proposalId] = true;
@@ -77,9 +89,10 @@ contract DAO {
         emit Vote(_proposalId, msg.sender, voterBalance);
     }
 
-    function finalizeProposal(uint256 _proposalId) external onlyInvestor {
+    function finalizeProposal(
+        uint256 _proposalId
+    ) external onlyInvestor notFinalized(_proposalId) {
         Proposal storage proposal = proposals[_proposalId];
-        require(!proposal.finalized, "DAO: proposal already finalized");
         require(proposal.votes >= quorum, "DAO: must reach quorum to finalize");
         require(
             address(this).balance >= proposal.amount,
