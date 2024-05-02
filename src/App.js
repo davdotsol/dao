@@ -8,6 +8,8 @@ import config from './config.json';
 
 import TOKEN_ABI from './abis/Token.json';
 import DAO_ABI from './abis/DAO.json';
+import Proposals from './components/Proposals';
+import Create from './components/Create';
 
 function App() {
   const [account, setAccount] = useState(null);
@@ -16,6 +18,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [dao, setDao] = useState(null);
   const [treasuryBalance, setTreasuryBalance] = useState(0);
+  const [proposals, setProposals] = useState([]);
+  const [quorum, setQuorum] = useState(null);
 
   const loadBlockchainData = async () => {
     const tempProvider = new ethers.BrowserProvider(window.ethereum);
@@ -54,6 +58,18 @@ function App() {
     );
     setAccountBalance(tempAccountBalance);
 
+    const count = await tempDao.proposalCount();
+    const items = [];
+
+    for (let i = 0; i < count; i++) {
+      const proposal = await tempDao.proposals(i + 1);
+      items.push(proposal);
+    }
+
+    setProposals(items);
+
+    setQuorum(await tempDao.quorum());
+
     setIsLoading(false);
   };
 
@@ -77,6 +93,14 @@ function App() {
             <strong>Treasury Balance:</strong> {treasuryBalance} ETH
           </p>
           <hr />
+          <Create provider={provider} dao={dao} setIsLoading={setIsLoading} />
+          <Proposals
+            provider={provider}
+            dao={dao}
+            proposals={proposals}
+            quorum={quorum}
+            setIsLoading={setIsLoading}
+          />
         </div>
       )}
 
