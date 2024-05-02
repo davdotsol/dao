@@ -9,14 +9,13 @@ import config from './config.json';
 import TOKEN_ABI from './abis/Token.json';
 import DAO_ABI from './abis/DAO.json';
 
-import './App.css';
-
 function App() {
   const [account, setAccount] = useState(null);
   const [provider, setProvider] = useState(null);
   const [accountBalance, setAccountBalance] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [dao, setDao] = useState(null);
+  const [treasuryBalance, setTreasuryBalance] = useState(0);
 
   const loadBlockchainData = async () => {
     const tempProvider = new ethers.BrowserProvider(window.ethereum);
@@ -37,12 +36,17 @@ function App() {
 
     setDao(tempDao);
 
+    const treasuryBalance = ethers.formatUnits(
+      await tempProvider.getBalance(config[chainId].dao.address),
+      18
+    );
+    setTreasuryBalance(treasuryBalance);
+
     const accounts = await window.ethereum.request({
       method: 'eth_requestAccounts',
     });
     const tempAccount = ethers.getAddress(accounts[0]);
     setAccount(tempAccount);
-    console.log(tempAccount);
 
     const tempAccountBalance = ethers.formatUnits(
       await tempToken.balanceOf(tempAccount),
@@ -64,7 +68,17 @@ function App() {
 
       <h1 className="my-4 text-center">Introducing My DAO</h1>
 
-      {isLoading ? <Loading /> : <div>Hello world</div>}
+      {isLoading ? (
+        <Loading />
+      ) : (
+        <div>
+          <hr />
+          <p className="text-center">
+            <strong>Treasury Balance:</strong> {treasuryBalance} ETH
+          </p>
+          <hr />
+        </div>
+      )}
 
       <hr />
       {account && <Info account={account} accountBalance={accountBalance} />}

@@ -25,11 +25,11 @@ async function main() {
   );
   console.log(`token fetched ${token.target}`);
 
-  let tx = await token.transfer(investor1.address, tokens(10));
+  let tx = await token.transfer(investor1.address, tokens(100));
   await tx.wait();
-  tx = await token.transfer(investor2.address, tokens(10));
+  tx = await token.transfer(investor2.address, tokens(100));
   await tx.wait();
-  tx = await token.transfer(investor3.address, tokens(10));
+  tx = await token.transfer(investor3.address, tokens(100));
   await tx.wait();
 
   const dao = await hre.ethers.getContractAt(
@@ -39,7 +39,7 @@ async function main() {
 
   tx = await funder.sendTransaction({
     to: (await dao).target,
-    value: hre.ethers.parseEther('10'),
+    value: hre.ethers.parseEther('1000'),
   });
   tx.wait();
 
