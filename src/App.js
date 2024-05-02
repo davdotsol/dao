@@ -90,7 +90,8 @@ function App() {
         <div>
           <hr />
           <p className="text-center">
-            <strong>Treasury Balance:</strong> {treasuryBalance} ETH
+            <strong>Treasury Balance:</strong> {treasuryBalance} ETH &nbsp;
+            <strong>Quorum:</strong> {quorum.toString()}
           </p>
           <hr />
           <Create provider={provider} dao={dao} setIsLoading={setIsLoading} />

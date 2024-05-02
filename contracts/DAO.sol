@@ -127,5 +127,12 @@ contract DAO {
         emit Finalize(_proposalId, proposal.forVotes, proposal.againstVotes);
     }
 
+    function hasVoted(
+        address _voter,
+        uint256 _proposalId
+    ) external view returns (bool) {
+        return voted[_voter][_proposalId];
+    }
+
     receive() external payable {}
 }

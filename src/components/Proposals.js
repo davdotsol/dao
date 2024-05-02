@@ -1,6 +1,24 @@
 import { ethers } from 'ethers';
+import { useEffect, useState } from 'react';
 
 const Proposals = ({ provider, dao, proposals, quorum, setIsLoading }) => {
+  const [hasVotedStatus, setHasVotedStatus] = useState({});
+
+  useEffect(() => {
+    const fetchVotingStatus = async () => {
+      const signer = await provider.getSigner();
+      const address = await signer.getAddress();
+      const status = {};
+      for (const proposal of proposals) {
+        const voted = await dao.connect(signer).hasVoted(address, proposal.id);
+        status[proposal.id] = voted;
+      }
+      setHasVotedStatus(status);
+    };
+
+    fetchVotingStatus();
+  }, [proposals, provider, dao]);
+
   const voteHandler = async (id) => {
     try {
       const signer = await provider.getSigner();
@@ -78,7 +96,7 @@ const Proposals = ({ provider, dao, proposals, quorum, setIsLoading }) => {
               </td>
               <td className="px-6 py-4">{proposal.votes.toString()}</td>
               <td className="px-6 py-4">
-                {!proposal.finalized && (
+                {!proposal.finalized && !hasVotedStatus[proposal.id] && (
                   <button onClick={() => voteHandler(proposal.id)}>Vote</button>
                 )}
               </td>
